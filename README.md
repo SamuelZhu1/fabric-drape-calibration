@@ -47,6 +47,12 @@ with a loop over a runtime range that reassigned a variable, which Warp can't di
 Splitting it into an atomic column-mean kernel and a squared-error kernel fixed it, and the test
 that compares against central finite differences now guards it.
 
+**Noisy curves look longer.** The first end-to-end run on synthetic photo curves stalled at 5.6 mm
+RMS even though the simulator is within 2 mm of the exact answer. Every bit of point noise adds
+length to a curve, so a 20 cm overhang with 0.5 mm noise measured about 4 mm too long, and each
+simulated column got matched to a point further down the photo than it should. Smoothing the curve
+(Savitzky-Golay) before measuring arc length brought it to 0.86 mm.
+
 ## Results
 
 Measured on a 4-core Intel Xeon (2.1 GHz) cloud machine, Warp 1.19 CPU backend.
@@ -58,6 +64,7 @@ Measured on a 4-core Intel Xeon (2.1 GHz) cloud machine, Warp 1.19 CPU backend.
 | Simulator vs exact heavy elastica, 5 stiffness / overhang cases | max 1.6 to 3.4 mm along a 10 to 20 cm overhang |
 | Photo extraction on a synthetic photo with perspective and noise | RMS 0.22 mm, max 0.69 mm |
 | Energy while settling | never rises (sampled every 250 steps over 6,000) |
+| End to end on curves from the exact elastica (not the simulator), 0.5 mm noise, fit on 3 overhangs | RMS 35.3 mm -> 0.86 mm; on the 2 held-out overhangs 38.4 mm -> 0.74 mm; rigidity within 3.5% (warp) and 6.3% (weft) |
 
 CPU rollout speed (`python -m bench.batch --steps 300`):
 
