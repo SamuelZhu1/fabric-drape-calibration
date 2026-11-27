@@ -1,0 +1,14 @@
+# One entry per fabric. Weigh a 10 x 10 cm square on a kitchen scale (grams x 100 = g/m^2).
+# The densities below are typical values for each kind of fabric; replace them with your own.
+denim:
+  areal_density_g_m2: 400
+  strip_cm: [25, 5]
+poplin:
+  areal_density_g_m2: 120
+  strip_cm: [25, 5]
+linen:
+  areal_density_g_m2: 180
+  strip_cm: [25, 5]
+jersey:
+  areal_density_g_m2: 160
+  strip_cm: [25, 5]
