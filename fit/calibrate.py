@@ -13,6 +13,7 @@ from pathlib import Path
 
 import numpy as np
 import warp as wp
+from scipy.signal import savgol_filter
 from warp.optim import Adam
 
 from cloth.mesh import make_strip
@@ -25,7 +26,14 @@ def resample_to_columns(points: np.ndarray, overhang: float, dx: float) -> np.nd
     """Pick the photo point at each simulated column's arc length from the table edge.
 
     The strip barely stretches, so column i sits at arc length i * dx along the measured curve.
+    Point noise makes a curve look longer than it is (every wiggle adds length), which shifted
+    every column outward by up to 4 mm on a 20 cm overhang with 0.5 mm noise, so the curve is
+    smoothed before its arc length is measured.
     """
+    if len(points) >= 9:
+        smooth = savgol_filter(points, 9, 3, axis=0)
+        smooth[0] = points[0]
+        points = smooth
     seg = np.linalg.norm(np.diff(points, axis=0), axis=1)
     s = np.concatenate([[0.0], np.cumsum(seg)])
     n_cols = int(round(overhang / dx)) + 1
