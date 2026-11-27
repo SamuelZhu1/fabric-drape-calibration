@@ -15,7 +15,8 @@ import numpy as np
 import warp as wp
 from warp.optim import Adam
 
-from cloth.sim import SimConfig, StripBatch, StripCase
+from cloth.mesh import make_strip
+from cloth.sim import StripBatch, StripCase
 
 DEFAULT_RIGIDITY = 20e-6  # N m, the one stiffness every fabric got before calibration
 
@@ -126,7 +127,7 @@ def main():
     args = ap.parse_args()
 
     rho, cases = load_fabric(args.fabric, args.curves, args.fabrics, args.fit_overhangs)
-    dx = 0.25 / 20
+    dx = make_strip().dx
     for c in cases:
         c.target_xy = resample_to_columns(c.target_xy, c.overhang, dx)
     batch = StripBatch(cases, rho, device=args.device)
@@ -134,6 +135,21 @@ def main():
     before = rms_mm(batch, np.log([DEFAULT_RIGIDITY, DEFAULT_RIGIDITY]))
     result = fit(batch, iters=args.iters, verbose=True)
     after = rms_mm(batch, np.array(result["log_rigidity"]))
+
+    # Overhangs the fit never saw: the honest error to quote.
+    _, every = load_fabric(args.fabric, args.curves, args.fabrics)
+    fit_mm = {round(o * 1000) for o in args.fit_overhangs}
+    held = [c for c in every if round(c.overhang * 1000) not in fit_mm]
+    held_out = None
+    if held:
+        for c in held:
+            c.target_xy = resample_to_columns(c.target_xy, c.overhang, dx)
+        hb = StripBatch(held, rho, device=args.device)
+        held_out = {
+            "overhangs_m": sorted({c.overhang for c in held}),
+            "rms_mm_default": rms_mm(hb, np.log([DEFAULT_RIGIDITY, DEFAULT_RIGIDITY])),
+            "rms_mm_fit": rms_mm(hb, np.array(result["log_rigidity"])),
+        }
     args.out.mkdir(exist_ok=True)
     out = {
         "fabric": args.fabric,
@@ -142,6 +158,7 @@ def main():
         "rms_mm_fit": after,
         "iterations": result["iterations"],
         "fit_overhangs_m": args.fit_overhangs,
+        "held_out": held_out,
     }
     (args.out / f"{args.fabric}.json").write_text(json.dumps(out, indent=2))
     print(json.dumps(out, indent=2))
